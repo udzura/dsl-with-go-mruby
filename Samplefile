@@ -1,0 +1,7 @@
+foobar_block do
+  buz  "hogehoge"
+  fizz "fugafuga"
+end
+
+buz  "waiwai"
+fizz "wakuwaku"
