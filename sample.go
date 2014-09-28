@@ -8,7 +8,30 @@ import (
 	"github.com/mitchellh/go-mruby"
 )
 
+var inFoobar bool
+var parsedConfig map[string]string
+
+func makeMrbMappingFunc(kernel *mruby.Class, keyName string) mruby.Func {
+	mrb_newMethod := func(m *mruby.Mrb, self *mruby.MrbValue) (mruby.Value, mruby.Value) {
+		args := m.GetArgs()
+		fmt.Printf("got: %s = %s\n", keyName, args[0].String())
+		if !inFoobar {
+			fmt.Printf("but exit\n")
+			return mruby.Nil, nil
+		}
+		parsedConfig[keyName] = args[0].String()
+
+		return m.TrueValue(), nil
+	}
+
+	kernel.DefineMethod(keyName, mrb_newMethod, mruby.ArgsReq(1))
+	return mrb_newMethod
+}
+
 func main() {
+	inFoobar := false
+	parsedConfig := make(map[string]string)
+
 	mrb := mruby.NewMrb()
 	defer mrb.Close()
 
@@ -25,9 +48,6 @@ func main() {
 	src := string(data[:])
 	fmt.Printf("src is:\n%v\n", src)
 
-	inFoobar := false
-	parsedConfig := make(map[string]string)
-
 	mrb_foobarBlock := func(m *mruby.Mrb, self *mruby.MrbValue) (mruby.Value, mruby.Value) {
 		inFoobar = true
 
@@ -40,29 +60,13 @@ func main() {
 		inFoobar = false
 		return mruby.Nil, nil
 	}
-	mrb_buz := func(m *mruby.Mrb, self *mruby.MrbValue) (mruby.Value, mruby.Value) {
-		if !inFoobar {
-			return mruby.Nil, nil
-		}
-		args := m.GetArgs()
-		parsedConfig["buz"] = args[0].String()
-
-		return m.TrueValue(), nil
-	}
-	mrb_fizz := func(m *mruby.Mrb, self *mruby.MrbValue) (mruby.Value, mruby.Value) {
-		if !inFoobar {
-			return mruby.Nil, nil
-		}
-		args := m.GetArgs()
-		parsedConfig["fizz"] = args[0].String()
-
-		return m.TrueValue(), nil
-	}
 
 	kernel := mrb.KernelModule()
 	kernel.DefineMethod("foobar_block", mrb_foobarBlock, mruby.ArgsBlock())
-	kernel.DefineMethod("buz", mrb_buz, mruby.ArgsReq(1))
-	kernel.DefineMethod("fizz", mrb_fizz, mruby.ArgsReq(1))
+
+	makeMrbMappingFunc(kernel, "buz")
+	makeMrbMappingFunc(kernel, "fizz")
+	makeMrbMappingFunc(kernel, "wheezee")
 
 	_, err = mrb.LoadString(src)
 	if err != nil {
