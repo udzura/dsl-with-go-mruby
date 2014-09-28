@@ -1,6 +1,8 @@
 MRUBY_COMMIT ?= 1.0.0
 
 all: libmruby.a
+	go get -d github.com/mitchellh/go-mruby
+	cd ${GOPATH}/src/github.com/mitchellh/go-mruby && make && cd -
 	go run sample.go
 
 clean:
